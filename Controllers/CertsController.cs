@@ -937,7 +937,7 @@ namespace EmeraldSysPKIBackend.Controllers
                                     {
                                         UpdateDefinition<BsonDocument> upd = Builders<BsonDocument>.Update.Set("status", "revoked").Set("revokedInfo", new BsonDocument { { "revocationDate", DateTime.UtcNow }, { "revocationReason", 0 } });
                                         collection.UpdateOne(new BsonDocument { { "serialNumber", serialNum } }, upd);
-                                        return StatusCode(204);
+                                        return NoContent();
                                     }
                                 }
                             }
