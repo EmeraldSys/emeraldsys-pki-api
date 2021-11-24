@@ -1,4 +1,9 @@
 name: "ASP.NET"
+
+env:
+  MONGODB_AUTH_STR: ${{ secrets.MONGODB_AUTH_STR }}
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
 on:
   push:
     branches: ["main"]
