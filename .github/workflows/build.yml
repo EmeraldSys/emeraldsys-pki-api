@@ -1,0 +1,30 @@
+name: "ASP.NET"
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+           dotnet-version: 3.1.x
+      - name: Install Dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Debug --no-restore
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+      - name: Delete Unnecessary Files
+        run: |
+          rm -rf bin/Debug/netcoreapp3.1/ca
+          rm -rf bin/Debug/netcoreapp3.1/ts
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+           name: EmeraldSysPKIBackend
+           path: bin/Debug/netcoreapp3.1
