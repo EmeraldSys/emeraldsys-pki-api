@@ -15,4 +15,5 @@ phases:
 artifacts:
   files:
     - bin/Debug/netcoreapp3.1/**/*
+    - scripts/**/*
     - appspec.yml
