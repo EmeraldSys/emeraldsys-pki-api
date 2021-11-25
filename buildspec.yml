@@ -1,0 +1,17 @@
+# Do not change version. This is the version of aws buildspec, not the version of your buldspec file.
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - dotnet restore
+  build:
+    commands:
+      - dotnet build --configuration Debug --no-restore
+      - dotnet test --no-restore --verbosity normal
+  post_build:
+    commands:
+      - rm -rf bin/Debug/netcoreapp3.1/ca
+      - rm -rf bin/Debug/netcoreapp3.1/ts
+artifacts:
+  files:
+    - bin/Debug/netcoreapp3.1/**/*
