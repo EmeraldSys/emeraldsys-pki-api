@@ -14,6 +14,6 @@ hooks:
       timeout: 300
       runas: root
   ApplicationStop:
-    - location: scripts/stop_server
+    - location: scripts/stop_kestrel_service.sh
       timeout: 300
       runas: root
