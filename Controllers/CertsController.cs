@@ -857,41 +857,71 @@ namespace EmeraldSysPKIBackend.Controllers
             return Unauthorized(new { Success = false });
         }
 
-        [HttpGet("{serialNumber}")]
-        public IActionResult CertGet(string serialNumber)
+        [HttpGet("{serialNumber}/status")]
+        public IActionResult CertStatus(string serialNumber)
         {
-            IMongoDatabase database = client.GetDatabase("main");
-            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("certificateRequests");
-
-            string serialNum = "";
-
-            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
+            if (Request.Headers.TryGetValue("Authorization", out Microsoft.Extensions.Primitives.StringValues v))
             {
-                serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
-            }
-            else
-            {
-                serialNum = serialNumber;
-            }
+                string value = v.First();
+                string[] split = value.Split(" ");
 
-            BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", serialNum } }).FirstOrDefault();
-
-            if (result != null)
-            {
-                if (result.Contains("email"))
+                if (split[0] == "Bearer")
                 {
-                    result.Remove("email");
-                }
+                    string token = split[1];
 
-                if (result.Contains("hash"))
-                {
-                    result.Remove("hash");
-                }
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        AuthController.AuthenticateResult ret = AuthController.Authenticate(token, out AuthController.AccountToken user);
 
-                return Ok(new { Success = true, Info = result });
+                        if (ret == AuthController.AuthenticateResult.SUCCESS)
+                        {
+                            IMongoDatabase database = client.GetDatabase("main");
+                            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("certificateRequests");
+
+                            string serialNum = "";
+
+                            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
+                            {
+                                serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
+                            }
+                            else
+                            {
+                                serialNum = serialNumber;
+                            }
+
+                            BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", serialNum } }).FirstOrDefault();
+
+                            if (result != null)
+                            {
+                                if (result.Contains("status") && result["status"].IsString)
+                                {
+                                    int uid = result["uid"].AsInt32;
+                                    if (user.UserId == uid)
+                                    {
+                                        return Ok(new { Success = true, Info = new { Status = result["status"].AsString } });
+                                    }
+                                }
+                            }
+
+                            return NotFound(new { Success = false, Message = "No certificate was found with this serial number" });
+                        }
+                        else if (ret == AuthController.AuthenticateResult.SESSION_EXPIRED)
+                        {
+                            return StatusCode(403, new { Success = false, Message = "Token expired" });
+                        }
+                        else if (ret == AuthController.AuthenticateResult.SIGNATURE_INVALID)
+                        {
+                            return StatusCode(403, new { Success = false, Message = "Signature verification failed" });
+                        }
+                        else if (ret == AuthController.AuthenticateResult.UNKNOWN)
+                        {
+                            return StatusCode(500, new { Success = false });
+                        }
+                    }
+                }
             }
 
-            return NotFound(new { Success = false, Message = "No certificate was found with this serial number" });
+            return Unauthorized(new { Success = false });
         }
 
         [HttpDelete("{serialNumber}/revoke")]
