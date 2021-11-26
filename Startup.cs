@@ -84,8 +84,6 @@ namespace EmeraldSysPKIBackend
 
             app.Use(async (ctx, next) =>
             {
-                Console.WriteLine(ctx.Request.Method + " " + ctx.Request.Path);
-                
                 await next();
 
                 if (ctx.Response.StatusCode == 404 && !ctx.Response.HasStarted)
