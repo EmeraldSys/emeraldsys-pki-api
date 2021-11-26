@@ -167,8 +167,8 @@ namespace EmeraldSysPKIBackend.Controllers
                             BasicOcspRespGenerator respGen = new BasicOcspRespGenerator(cert.GetPublicKey());
                             DateTime thisUpdate = DateTime.UtcNow;
 
-                            var nonceExt = ocspRequest.RequestExtensions.GetExtension(OcspObjectIdentifiers.PkixOcspNonce);
-                            if (nonceExt != null) respGen.SetResponseExtensions(new X509Extensions(new[] { OcspObjectIdentifiers.PkixOcspNonce }, new[] { nonceExt }));
+                            //var nonceExt = ocspRequest.RequestExtensions.GetExtension(OcspObjectIdentifiers.PkixOcspNonce);
+                            //if (nonceExt != null) respGen.SetResponseExtensions(new X509Extensions(new[] { OcspObjectIdentifiers.PkixOcspNonce }, new[] { nonceExt }));
 
                             if (result.Contains("status") && result["status"].IsString)
                             {
@@ -299,8 +299,8 @@ namespace EmeraldSysPKIBackend.Controllers
             BasicOcspRespGenerator respGen = new BasicOcspRespGenerator(cert.GetPublicKey());
             DateTime thisUpdate = DateTime.UtcNow;
 
-            var nonceExt = ocspRequest.RequestExtensions.GetExtension(OcspObjectIdentifiers.PkixOcspNonce);
-            if (nonceExt != null) respGen.SetResponseExtensions(new X509Extensions(new[] { OcspObjectIdentifiers.PkixOcspNonce }, new[] { nonceExt }));
+            //var nonceExt = ocspRequest.RequestExtensions.GetExtension(OcspObjectIdentifiers.PkixOcspNonce);
+            //if (nonceExt != null) respGen.SetResponseExtensions(new X509Extensions(new[] { OcspObjectIdentifiers.PkixOcspNonce }, new[] { nonceExt }));
 
             Req[] reqList = ocspRequest.GetRequestList();
 
