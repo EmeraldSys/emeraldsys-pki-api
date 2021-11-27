@@ -48,6 +48,8 @@ namespace EmeraldSysPKIBackend.Models
         public string CSR { get; set; }
         [JsonProperty("notAfter")]
         public string NotAfter { get; set; } // UTC Timestamp
+        [JsonProperty("notAfterYears")]
+        public int NotAfterYears { get; set; } = 0;
 
         public override string ToString()
         {

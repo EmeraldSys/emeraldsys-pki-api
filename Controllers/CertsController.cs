@@ -269,6 +269,10 @@ namespace EmeraldSysPKIBackend.Controllers
                     cert.SetNotAfter(ret);
                 }
             }
+            else if (req.Req.NotAfterYears > 0)
+            {
+                cert.SetNotAfter(genTime.AddYears(req.Req.NotAfterYears));
+            }
             else
             {
                 cert.SetNotAfter(genTime.AddYears(1));
