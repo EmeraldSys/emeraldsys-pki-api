@@ -169,6 +169,22 @@ namespace EmeraldSysPKIBackend.Controllers
 
                                     break;
                                 }
+                                case Models.CertRequest.CertificateType.EVSSL2:
+                                {
+                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.crt"));
+                                    certPrivKey = RSA.Create();
+
+                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.pem"))
+                                    {
+                                        StreamReader reader1 = new StreamReader(fs);
+                                        PemReader pem1 = new PemReader(reader1);
+                                        var obj = pem1.ReadPemObject();
+                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                        pem1.Reader.Close();
+                                    }
+
+                                    break;
+                                }
                                 default:
                                     break;
                             }

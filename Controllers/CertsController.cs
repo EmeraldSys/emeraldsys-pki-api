@@ -186,6 +186,21 @@ namespace EmeraldSysPKIBackend.Controllers
                     fs.Close();
                 }
             }
+            else if (type == Models.CertRequest.CertificateType.EVSSL2)
+            {
+                caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.crt"));
+                caCertPrivKey = RSA.Create();
+
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.pem"))
+                {
+                    StreamReader reader = new StreamReader(fs);
+                    PemReader pem = new PemReader(reader);
+                    var obj = pem.ReadPemObject();
+                    caCertPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                    pem.Reader.Close();
+                    fs.Close();
+                }
+            }
             else
             {
                 return null;
@@ -213,7 +228,7 @@ namespace EmeraldSysPKIBackend.Controllers
                     return null;
                 }
 
-                if (req.Req.Type == Models.CertRequest.CertificateType.EVSSL)
+                if (req.Req.Type == Models.CertRequest.CertificateType.EVSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
                 {
                     dnStructure.Add($"2.5.4.15=Private Organization"); // businessCategory
                     dnStructure.Add($"1.3.6.1.4.1.311.60.2.1.3={req.Req.Country}"); // jurisdictionCountryName
@@ -289,7 +304,7 @@ namespace EmeraldSysPKIBackend.Controllers
                 // TODO: Add custom extended key usages
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPServerAuth, KeyPurposeID.IdKPClientAuth));
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.OrganizationSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.OrganizationSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
             {
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPClientAuth, KeyPurposeID.IdKPServerAuth));
             }
@@ -303,7 +318,8 @@ namespace EmeraldSysPKIBackend.Controllers
             else if (
                 req.Req.Type == Models.CertRequest.CertificateType.DomainSSL ||
                 req.Req.Type == Models.CertRequest.CertificateType.OrganizationSSL ||
-                req.Req.Type == Models.CertRequest.CertificateType.EVSSL)
+                req.Req.Type == Models.CertRequest.CertificateType.EVSSL ||
+                req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
             {
                 List<GeneralName> dnsNames = new List<GeneralName>() { new GeneralName(GeneralName.DnsName, req.Req.CommonName) };
 
@@ -361,6 +377,11 @@ namespace EmeraldSysPKIBackend.Controllers
                 crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trustedid_ev2022.crl");
                 crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trustedid_ev2022.crt");
             }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
+            {
+                crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trustedid_ev2_2022.crl");
+                crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trustedid_ev2_2022.crt");
+            }
 
             if (crlGeneralName != null)
             {
@@ -399,7 +420,7 @@ namespace EmeraldSysPKIBackend.Controllers
                 PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.23.140.1.2.2"));
                 cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(inf));
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.EVSSL)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.EVSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
             {
                 PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.23.140.1.1"));
                 PolicyInformation inf2 = new PolicyInformation(new DerObjectIdentifier("2.16.124.1.918311.1.1"));
@@ -426,7 +447,8 @@ namespace EmeraldSysPKIBackend.Controllers
             else if (
                 req.Req.Type == Models.CertRequest.CertificateType.DomainSSL ||
                 req.Req.Type == Models.CertRequest.CertificateType.OrganizationSSL ||
-                req.Req.Type == Models.CertRequest.CertificateType.EVSSL)
+                req.Req.Type == Models.CertRequest.CertificateType.EVSSL ||
+                req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
             {
                 cert.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage((int)X509KeyUsageFlags.DigitalSignature | (int)X509KeyUsageFlags.KeyEncipherment));
             }
