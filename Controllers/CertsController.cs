@@ -131,7 +131,7 @@ namespace EmeraldSysPKIBackend.Controllers
                 caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                 caCertPrivKey = RSA.Create();
 
-                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.pem"))
                 {
                     StreamReader reader = new StreamReader(fs);
                     PemReader pem = new PemReader(reader);
