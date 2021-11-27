@@ -410,6 +410,11 @@ namespace EmeraldSysPKIBackend.Controllers
                 PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.23.140.1.3"));
                 cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(inf));
             }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.5.29.32.0"));
+                cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(inf));
+            }
             else if (req.Req.Type == Models.CertRequest.CertificateType.DomainSSL)
             {
                 PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.23.140.1.2.1"));
