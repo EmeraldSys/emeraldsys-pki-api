@@ -189,24 +189,13 @@ namespace EmeraldSysPKIBackend.Controllers
                         }
 
                         X509Crl genCrl = crl.Generate(sig);
+                        byte[] der = genCrl.GetEncoded();
 
-                        using (MemoryStream mem = new MemoryStream())
+                        generated.Add(new UpdEntry
                         {
-                            StreamWriter writer = new StreamWriter(mem);
-                            PemWriter pem = new PemWriter(writer);
-                            pem.WriteObject(genCrl);
-                            pem.Writer.Flush();
-                            StreamReader reader = new StreamReader(mem);
-                            mem.Position = 0;
-
-                            string contents = reader.ReadToEnd();
-
-                            generated.Add(new UpdEntry
-                            {
-                                CA = caCertFileName,
-                                Contents = contents
-                            });
-                        }
+                            CA = caCertFileName,
+                            Contents = System.Text.Encoding.UTF8.GetString(der)
+                        });
                     }
                 }
             }

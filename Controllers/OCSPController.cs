@@ -105,6 +105,22 @@ namespace EmeraldSysPKIBackend.Controllers
 
                                     break;
                                 }
+                                case Models.CertRequest.CertificateType.IntermediateRoot2022:
+                                {
+                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_root2022.crt"));
+                                    certPrivKey = RSA.Create();
+
+                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))
+                                    {
+                                        StreamReader reader1 = new StreamReader(fs);
+                                        PemReader pem1 = new PemReader(reader1);
+                                        var obj = pem1.ReadPemObject();
+                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                        pem1.Reader.Close();
+                                    }
+
+                                    break;
+                                }
                                 case Models.CertRequest.CertificateType.DomainSSL:
                                 {
                                     cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_dv2022.crt"));
@@ -287,6 +303,20 @@ namespace EmeraldSysPKIBackend.Controllers
                 certPrivKey = RSA.Create();
 
                 using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ts2022.pem"))
+                {
+                    StreamReader reader1 = new StreamReader(fs);
+                    PemReader pem1 = new PemReader(reader1);
+                    var obj = pem1.ReadPemObject();
+                    certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                    pem1.Reader.Close();
+                }
+            }
+            else if (type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_root2022.crt"));
+                certPrivKey = RSA.Create();
+
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))
                 {
                     StreamReader reader1 = new StreamReader(fs);
                     PemReader pem1 = new PemReader(reader1);
@@ -549,6 +579,38 @@ namespace EmeraldSysPKIBackend.Controllers
             OcspReq req = new OcspReq(bRequest);
 
             byte[] bResponse = GenerateOCSPResponse(req, Models.CertRequest.CertificateType.OrganizationSSL);
+
+            return new FileContentResult(bResponse, "application/ocsp-response");
+        }
+
+        [HttpGet("trusted_id_root_2022")]
+        public IActionResult RootOCSPGet()
+        {
+            if (Request.Host.ToString() != "ocsp.pki.emeraldsys.xyz") return NotFound();
+            return StatusCode(405, new { Success = false, Message = "GET not allowed" });
+        }
+
+        [HttpPost("trusted_id_root_2022")]
+        public IActionResult RootOCSPPost()
+        {
+            if (Request.Host.ToString() != "ocsp.pki.emeraldsys.xyz") return NotFound();
+
+            if (Request.ContentType != "application/ocsp-request")
+            {
+                OCSPRespGenerator errRespGen = new OCSPRespGenerator();
+                return new FileContentResult(errRespGen.Generate(OcspRespStatus.MalformedRequest, null).GetEncoded(), "application/ocsp-response");
+            }
+
+            Request.EnableBuffering();
+            Stream str = Request.Body;
+            str.Position = 0;
+            BinaryReader reader = new BinaryReader(str);
+            byte[] bRequest = reader.ReadBytes((int)Request.ContentLength);
+            reader.Close();
+
+            OcspReq req = new OcspReq(bRequest);
+
+            byte[] bResponse = GenerateOCSPResponse(req, Models.CertRequest.CertificateType.IntermediateRoot2022);
 
             return new FileContentResult(bResponse, "application/ocsp-response");
         }

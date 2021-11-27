@@ -126,6 +126,21 @@ namespace EmeraldSysPKIBackend.Controllers
                     fs.Close();
                 }
             }
+            else if (type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_root2022.crt"));
+                caCertPrivKey = RSA.Create();
+
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))
+                {
+                    StreamReader reader = new StreamReader(fs);
+                    PemReader pem = new PemReader(reader);
+                    var obj = pem.ReadPemObject();
+                    caCertPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                    pem.Reader.Close();
+                    fs.Close();
+                }
+            }
             else if (type == Models.CertRequest.CertificateType.DomainSSL)
             {
                 caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_dv2022.crt"));
@@ -269,6 +284,11 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.IdKPTimeStamping));
             }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                // TODO: Add custom extended key usages
+                cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPServerAuth, KeyPurposeID.IdKPClientAuth));
+            }
             else if (req.Req.Type == Models.CertRequest.CertificateType.OrganizationSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL)
             {
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPClientAuth, KeyPurposeID.IdKPServerAuth));
@@ -320,6 +340,11 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trustedid_ts2022.crl");
                 crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trustedid_ts2022.crt");
+            }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trusted_id_root_2022.crl");
+                crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trusted_id_root_2022.crt");
             }
             else if (req.Req.Type == Models.CertRequest.CertificateType.DomainSSL)
             {
@@ -386,6 +411,10 @@ namespace EmeraldSysPKIBackend.Controllers
             if (req.Req.Type == Models.CertRequest.CertificateType.CodeSigning || req.Req.Type == Models.CertRequest.CertificateType.EVCodeSigning || req.Req.Type == Models.CertRequest.CertificateType.TimestampInternal)
             {
                 cert.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage((int)X509KeyUsageFlags.DigitalSignature));
+            }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                cert.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage((int)X509KeyUsageFlags.DigitalSignature | (int)X509KeyUsageFlags.KeyCertSign | (int)X509KeyUsageFlags.CrlSign));
             }
             else if (
                 req.Req.Type == Models.CertRequest.CertificateType.DomainSSL ||
@@ -755,6 +784,16 @@ namespace EmeraldSysPKIBackend.Controllers
                                         else if (req.Type == Models.CertRequest.CertificateType.TimestampInternal)
                                         {
                                             CALoadResult result = LoadCA(Models.CertRequest.CertificateType.TimestampInternal);
+
+                                            if (result != null)
+                                            {
+                                                caCert = result.Certificate;
+                                                caCertPrivKey = result.PrivateKey;
+                                            }
+                                        }
+                                        else if (req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+                                        {
+                                            CALoadResult result = LoadCA(Models.CertRequest.CertificateType.IntermediateRoot2022);
 
                                             if (result != null)
                                             {
