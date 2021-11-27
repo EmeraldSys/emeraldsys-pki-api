@@ -406,7 +406,14 @@ namespace EmeraldSysPKIBackend.Controllers
                 cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(new[] { inf, inf2 }));
             }
 
-            cert.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
+            if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            {
+                cert.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
+            }
+            else
+            {
+                cert.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
+            }
 
             if (req.Req.Type == Models.CertRequest.CertificateType.CodeSigning || req.Req.Type == Models.CertRequest.CertificateType.EVCodeSigning || req.Req.Type == Models.CertRequest.CertificateType.TimestampInternal)
             {
