@@ -128,7 +128,7 @@ namespace EmeraldSysPKIBackend.Controllers
             }
             else if (type == Models.CertRequest.CertificateType.IntermediateRoot2022)
             {
-                caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_root2022.crt"));
+                caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                 caCertPrivKey = RSA.Create();
 
                 using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))

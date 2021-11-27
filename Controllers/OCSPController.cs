@@ -107,10 +107,10 @@ namespace EmeraldSysPKIBackend.Controllers
                                 }
                                 case Models.CertRequest.CertificateType.IntermediateRoot2022:
                                 {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_root2022.crt"));
+                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                                     certPrivKey = RSA.Create();
 
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))
+                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.pem"))
                                     {
                                         StreamReader reader1 = new StreamReader(fs);
                                         PemReader pem1 = new PemReader(reader1);
@@ -313,10 +313,10 @@ namespace EmeraldSysPKIBackend.Controllers
             }
             else if (type == Models.CertRequest.CertificateType.IntermediateRoot2022)
             {
-                cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_root2022.crt"));
+                cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                 certPrivKey = RSA.Create();
 
-                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_root2022.pem"))
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.pem"))
                 {
                     StreamReader reader1 = new StreamReader(fs);
                     PemReader pem1 = new PemReader(reader1);
