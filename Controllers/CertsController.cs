@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -1001,6 +1002,14 @@ namespace EmeraldSysPKIBackend.Controllers
             return Unauthorized(new { Success = false });
         }
 
+        public class RevokeRequest
+        {
+            [JsonProperty("revocationDate")]
+            public string Date { get; set; }
+            [JsonProperty("revocationReason")]
+            public OCSPController.CRLReason Reason { get; set; }
+        }
+
         [HttpDelete("{serialNumber}/revoke")]
         public IActionResult CertRevoke(string serialNumber)
         {
@@ -1019,6 +1028,13 @@ namespace EmeraldSysPKIBackend.Controllers
 
                         if (ret == AuthController.AuthenticateResult.SUCCESS)
                         {
+                            Request.EnableBuffering();
+                            Stream str = Request.Body;
+                            str.Position = 0;
+                            string json = new StreamReader(str).ReadToEnd();
+
+                            RevokeRequest req = JsonConvert.DeserializeObject<RevokeRequest>(json);
+
                             IMongoDatabase database = client.GetDatabase("main");
                             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("certificateRequests");
 
@@ -1042,10 +1058,32 @@ namespace EmeraldSysPKIBackend.Controllers
                                     int uid = result["uid"].AsInt32;
                                     if (user.UserId == uid)
                                     {
-                                        UpdateDefinition<BsonDocument> upd = Builders<BsonDocument>.Update.Set("status", "revoked").Set("revokedInfo", new BsonDocument { { "revocationDate", DateTime.UtcNow }, { "revocationReason", 0 } });
-                                        collection.UpdateOne(new BsonDocument { { "serialNumber", serialNum } }, upd);
-                                        return NoContent();
+                                        if (DateTime.TryParseExact(req.Date, "yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime date))
+                                        {
+                                            if (Enum.IsDefined(typeof(OCSPController.CRLReason), req.Reason))
+                                            {
+                                                UpdateDefinition<BsonDocument> upd = Builders<BsonDocument>.Update.Set("status", "revoked").Set("revokedInfo", new BsonDocument { { "revocationDate", date }, { "revocationReason", (int)req.Reason } });
+                                                collection.UpdateOne(new BsonDocument { { "serialNumber", serialNum } }, upd);
+                                                return NoContent();
+                                            }
+                                            else
+                                            {
+                                                return BadRequest(new { Success = false, Message = "Revocation reason not defined in enum" });
+                                            }
+                                        }
+                                        else
+                                        {
+                                            return BadRequest(new { Success = false, Message = "Date cannot be parsed" });
+                                        }
                                     }
+                                    else
+                                    {
+                                        return StatusCode(403, new { Success = false, Message = "Missing access" });
+                                    }
+                                }
+                                else
+                                {
+                                    return BadRequest(new { Success = false, Message = "Certificate is not user created" });
                                 }
                             }
 
