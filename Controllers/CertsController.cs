@@ -2,7 +2,7 @@
  * EmeraldSys PKI
  * Certs API
  *
- * Copyright (c) 2021 EmeraldSys, All rights reserved
+ * Copyright (c) 2021-2022 EmeraldSys, All rights reserved
 */
 
 using System;
@@ -58,12 +58,20 @@ namespace EmeraldSysPKIBackend.Controllers
             public Models.CertRequest Req { get; }
             public Org.BouncyCastle.X509.X509Certificate IssuerCert { get; }
             public RSA IssuerPrivKey { get; }
+            public ECDsa IssuerPrivKeyEC { get; }
 
             public CertReq(Models.CertRequest Req, Org.BouncyCastle.X509.X509Certificate IssuerCert, RSA IssuerPrivKey)
             {
                 this.Req = Req;
                 this.IssuerCert = IssuerCert;
                 this.IssuerPrivKey = IssuerPrivKey;
+            }
+
+            public CertReq(Models.CertRequest Req, Org.BouncyCastle.X509.X509Certificate IssuerCert, ECDsa IssuerPrivKeyEC)
+            {
+                this.Req = Req;
+                this.IssuerCert = IssuerCert;
+                this.IssuerPrivKeyEC = IssuerPrivKeyEC;
             }
         }
 
@@ -329,7 +337,7 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.IdKPTimeStamping));
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022 || req.Req.Type == Models.CertRequest.CertificateType.IntermediateECCRoot2022)
             {
                 // TODO: Add custom extended key usages
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPServerAuth, KeyPurposeID.IdKPClientAuth));
@@ -391,6 +399,11 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trusted_id_root_2022.crl");
                 crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trusted_id_root_2022.crt");
+            }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateECCRoot2022)
+            {
+                crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trusted_id_root_ecc_2022.crl");
+                crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trusted_id_root_ecc_2022.crt");
             }
             else if (req.Req.Type == Models.CertRequest.CertificateType.DomainSSL)
             {
@@ -497,6 +510,9 @@ namespace EmeraldSysPKIBackend.Controllers
                     break;
                 case Models.CertRequest.SignatureAlgorithm.SHA384withRSA:
                     sig = new Asn1SignatureFactory("SHA384withRSA", DotNetUtilities.GetKeyPair(req.IssuerPrivKey).Private);
+                    break;
+                case Models.CertRequest.SignatureAlgorithm.SHA256withECDSA:
+                    sig = new Asn1SignatureFactory("SHA256withECDSA", DotNetUtilities.GetKeyPair(req.IssuerPrivKeyEC).Private);
                     break;
                 default:
                     break;

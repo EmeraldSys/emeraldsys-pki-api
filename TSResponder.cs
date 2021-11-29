@@ -1,4 +1,11 @@
-﻿using Org.BouncyCastle.Asn1;
+﻿/*
+ * EmeraldSys PKI
+ * TS Responder
+ *
+ * Copyright (c) 2021-2022 EmeraldSys, All rights reserved
+*/
+
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;

@@ -1,4 +1,11 @@
-﻿using System;
+﻿/*
+ * EmeraldSys PKI
+ * TS API
+ *
+ * Copyright (c) 2021-2022 EmeraldSys, All rights reserved
+*/
+
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;

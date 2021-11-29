@@ -1,4 +1,11 @@
-﻿using System;
+﻿/*
+ * EmeraldSys PKI
+ * Cert Request Model
+ *
+ * Copyright (c) 2021-2022 EmeraldSys, All rights reserved
+*/
+
+using System;
 using Newtonsoft.Json;
 
 namespace EmeraldSysPKIBackend.Models
@@ -21,7 +28,8 @@ namespace EmeraldSysPKIBackend.Models
         public enum SignatureAlgorithm
         {
             SHA256withRSA,
-            SHA384withRSA
+            SHA384withRSA,
+            SHA256withECDSA
         }
 
         [JsonProperty("type")]

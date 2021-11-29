@@ -1,4 +1,11 @@
-﻿using System;
+﻿/*
+ * EmeraldSys PKI
+ * OCSP API
+ *
+ * Copyright (c) 2021-2022 EmeraldSys, All rights reserved
+*/
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
@@ -56,172 +63,220 @@ namespace EmeraldSysPKIBackend.Controllers
 
             Req[] reqList = ocspRequest.GetRequestList();
 
+            BasicOcspResp res = null;
+
+            bool CertTypeSet = false;
+            Models.CertRequest.CertificateType? CertType = null;
+            bool Successful = false;
+            bool Unauthorized = false;
+            bool InternalError = false;
+
             if (reqList.Length > 0)
             {
-                Req req = reqList[0];
-                CertificateID cId = req.GetCertID();
-
-                // Find serial number in collection
-                BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", cId.SerialNumber.ToString() } }).FirstOrDefault();
-
-                if (result != null)
+                for (int i = 0; i < reqList.Length; i++)
                 {
-                    if (result.Contains("type") && result["type"].IsInt32)
+                    Req req = reqList[i];
+                    CertificateID cId = req.GetCertID();
+
+                    // Find serial number in collection
+                    BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", cId.SerialNumber.ToString() } }).FirstOrDefault();
+
+                    if (result != null)
                     {
-                        int type = result["type"].AsInt32;
-                        if (Enum.IsDefined(typeof(Models.CertRequest.CertificateType), type))
+                        if (result.Contains("type") && result["type"].IsInt32)
                         {
-                            switch ((Models.CertRequest.CertificateType)type)
+                            int type = result["type"].AsInt32;
+                            if (Enum.IsDefined(typeof(Models.CertRequest.CertificateType), type))
                             {
-                                case Models.CertRequest.CertificateType.CodeSigning:
+                                if (!CertTypeSet)
                                 {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_code2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_code2022.pem"))
+                                    switch ((Models.CertRequest.CertificateType)type)
                                     {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                case Models.CertRequest.CertificateType.TimestampInternal:
-                                {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ts2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ts2022.pem"))
-                                    {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                case Models.CertRequest.CertificateType.IntermediateRoot2022:
-                                {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.pem"))
-                                    {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                case Models.CertRequest.CertificateType.DomainSSL:
-                                {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_dv2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_dv2022.pem"))
-                                    {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                case Models.CertRequest.CertificateType.OrganizationSSL:
-                                {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ov2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ov2022.pem"))
-                                    {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                case Models.CertRequest.CertificateType.EVSSL:
-                                {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ev2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ev2022.pem"))
-                                    {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                case Models.CertRequest.CertificateType.EVSSL2:
-                                {
-                                    cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.crt"));
-                                    certPrivKey = RSA.Create();
-
-                                    using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.pem"))
-                                    {
-                                        StreamReader reader1 = new StreamReader(fs);
-                                        PemReader pem1 = new PemReader(reader1);
-                                        var obj = pem1.ReadPemObject();
-                                        certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
-                                        pem1.Reader.Close();
-                                    }
-
-                                    break;
-                                }
-                                default:
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            return new OCSPRespGenerator().Generate(OcspRespStatus.InternalError, null).GetEncoded();
-                        }
-
-                        if (cert != null && certPrivKey != null)
-                        {
-                            BasicOcspRespGenerator respGen = new BasicOcspRespGenerator(cert.GetPublicKey());
-                            DateTime thisUpdate = DateTime.UtcNow;
-
-                            //var nonceExt = ocspRequest.RequestExtensions.GetExtension(OcspObjectIdentifiers.PkixOcspNonce);
-                            //if (nonceExt != null) respGen.SetResponseExtensions(new X509Extensions(new[] { OcspObjectIdentifiers.PkixOcspNonce }, new[] { nonceExt }));
-
-                            if (result.Contains("status") && result["status"].IsString)
-                            {
-                                if (result["status"].AsString == "revoked")
-                                {
-                                    if (result.Contains("revokedInfo") && result["revokedInfo"].IsBsonDocument)
-                                    {
-                                        BsonDocument revokedInfo = result["revokedInfo"].AsBsonDocument;
-                                        if (revokedInfo.Contains("revocationDate") && revokedInfo.Contains("revocationReason"))
+                                        case Models.CertRequest.CertificateType.CodeSigning:
                                         {
-                                            BsonValue rawRevocationDate = revokedInfo["revocationDate"];
-                                            BsonValue rawRevocationReason = revokedInfo["revocationReason"];
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_code2022.crt"));
+                                            certPrivKey = RSA.Create();
 
-                                            if (rawRevocationDate.IsBsonDateTime && rawRevocationReason.IsInt32)
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_code2022.pem"))
                                             {
-                                                DateTime revocationDate = rawRevocationDate.AsBsonDateTime.ToUniversalTime();
-                                                int revocationReason = rawRevocationReason.AsInt32;
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
 
-                                                if (Enum.IsDefined(typeof(CRLReason), revocationReason))
+                                            CertType = Models.CertRequest.CertificateType.CodeSigning;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.TimestampInternal:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ts2022.crt"));
+                                            certPrivKey = RSA.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ts2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.TimestampInternal;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.IntermediateRoot2022:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
+                                            certPrivKey = RSA.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.IntermediateRoot2022;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.DomainSSL:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_dv2022.crt"));
+                                            certPrivKey = RSA.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_dv2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.DomainSSL;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.OrganizationSSL:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ov2022.crt"));
+                                            certPrivKey = RSA.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ov2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.OrganizationSSL;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.EVSSL:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ev2022.crt"));
+                                            certPrivKey = RSA.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ev2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.EVSSL;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.EVSSL2:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.crt"));
+                                            certPrivKey = RSA.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trustedid_ev2_2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.EVSSL2;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        default:
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((Models.CertRequest.CertificateType)type != CertType)
+                                    {
+                                        Unauthorized = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                InternalError = true;
+                                break;
+                            }
+
+                            if (cert != null && certPrivKey != null)
+                            {
+                                BasicOcspRespGenerator respGen = new BasicOcspRespGenerator(cert.GetPublicKey());
+                                DateTime thisUpdate = DateTime.UtcNow;
+
+                                //var nonceExt = ocspRequest.RequestExtensions.GetExtension(OcspObjectIdentifiers.PkixOcspNonce);
+                                //if (nonceExt != null) respGen.SetResponseExtensions(new X509Extensions(new[] { OcspObjectIdentifiers.PkixOcspNonce }, new[] { nonceExt }));
+
+                                if (result.Contains("status") && result["status"].IsString)
+                                {
+                                    if (result["status"].AsString == "revoked")
+                                    {
+                                        if (result.Contains("revokedInfo") && result["revokedInfo"].IsBsonDocument)
+                                        {
+                                            BsonDocument revokedInfo = result["revokedInfo"].AsBsonDocument;
+                                            if (revokedInfo.Contains("revocationDate") && revokedInfo.Contains("revocationReason"))
+                                            {
+                                                BsonValue rawRevocationDate = revokedInfo["revocationDate"];
+                                                BsonValue rawRevocationReason = revokedInfo["revocationReason"];
+
+                                                if (rawRevocationDate.IsBsonDateTime && rawRevocationReason.IsInt32)
                                                 {
-                                                    respGen.AddResponse(cId, new RevokedStatus(revocationDate, revocationReason), thisUpdate, thisUpdate.AddDays(14), null);
+                                                    DateTime revocationDate = rawRevocationDate.AsBsonDateTime.ToUniversalTime();
+                                                    int revocationReason = rawRevocationReason.AsInt32;
+
+                                                    if (Enum.IsDefined(typeof(CRLReason), revocationReason))
+                                                    {
+                                                        respGen.AddResponse(cId, new RevokedStatus(revocationDate, revocationReason), thisUpdate, thisUpdate.AddDays(14), null);
+                                                    }
+                                                    else
+                                                    {
+                                                        respGen.AddResponse(cId, new UnknownStatus(), thisUpdate, thisUpdate.AddDays(14), null);
+                                                    }
                                                 }
                                                 else
                                                 {
@@ -238,43 +293,67 @@ namespace EmeraldSysPKIBackend.Controllers
                                             respGen.AddResponse(cId, new UnknownStatus(), thisUpdate, thisUpdate.AddDays(14), null);
                                         }
                                     }
-                                    else
+                                    else if (result["status"].AsString == "good")
                                     {
-                                        respGen.AddResponse(cId, new UnknownStatus(), thisUpdate, thisUpdate.AddDays(14), null);
+                                        respGen.AddResponse(cId, CertificateStatus.Good, thisUpdate, thisUpdate.AddDays(14), null);
                                     }
                                 }
-                                else if (result["status"].AsString == "good")
+                                else
                                 {
-                                    respGen.AddResponse(cId, CertificateStatus.Good, thisUpdate, thisUpdate.AddDays(14), null);
+                                    respGen.AddResponse(cId, new UnknownStatus(), thisUpdate, thisUpdate.AddDays(14), null);
+                                }
+
+                                if (i == (reqList.Length - 1))
+                                {
+                                    SecureRandom rand = new SecureRandom(new CryptoApiRandomGenerator());
+                                    Asn1SignatureFactory sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKey).Private, rand);
+                                    res = respGen.Generate(sig, new Org.BouncyCastle.X509.X509Certificate[] { }, thisUpdate);
+                                    Successful = true;
                                 }
                             }
                             else
                             {
-                                respGen.AddResponse(cId, new UnknownStatus(), thisUpdate, thisUpdate.AddDays(14), null);
+                                InternalError = true;
+                                break;
                             }
-
-                            SecureRandom rand = new SecureRandom(new CryptoApiRandomGenerator());
-                            Asn1SignatureFactory sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKey).Private, rand);
-                            BasicOcspResp resp = respGen.Generate(sig, new Org.BouncyCastle.X509.X509Certificate[] { }, thisUpdate);
-                            return new OCSPRespGenerator().Generate(OcspRespStatus.Successful, resp).GetEncoded();
                         }
                         else
                         {
-                            return new OCSPRespGenerator().Generate(OcspRespStatus.InternalError, null).GetEncoded();
+                            InternalError = true;
+                            break;
                         }
                     }
                     else
                     {
-                        return new OCSPRespGenerator().Generate(OcspRespStatus.InternalError, null).GetEncoded();
+                        Unauthorized = true;
+                        break;
                     }
-                }
-                else
-                {
-                    return new OCSPRespGenerator().Generate(OcspRespStatus.Unauthorized, null).GetEncoded();
                 }
             }
 
-            return new OCSPRespGenerator().Generate(OcspRespStatus.MalformedRequest, null).GetEncoded();
+            if (Successful)
+            {
+                if (res != null)
+                {
+                    return new OCSPRespGenerator().Generate(OcspRespStatus.Successful, res).GetEncoded();
+                }
+                else
+                {
+                    return new OCSPRespGenerator().Generate(OcspRespStatus.InternalError, null).GetEncoded();
+                }
+            }
+            else if (Unauthorized)
+            {
+                return new OCSPRespGenerator().Generate(OcspRespStatus.Unauthorized, null).GetEncoded();
+            }
+            else if (InternalError)
+            {
+                return new OCSPRespGenerator().Generate(OcspRespStatus.InternalError, null).GetEncoded();
+            }
+            else
+            {
+                return new OCSPRespGenerator().Generate(OcspRespStatus.MalformedRequest, null).GetEncoded();
+            }
         }
 
         public byte[] GenerateOCSPResponse(OcspReq ocspRequest, Models.CertRequest.CertificateType type)
