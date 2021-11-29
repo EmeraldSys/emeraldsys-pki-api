@@ -14,7 +14,8 @@ namespace EmeraldSysPKIBackend.Models
             CodeSigning,
             TimestampInternal,
             IntermediateRoot2022,
-            EVSSL2
+            EVSSL2,
+            IntermediateECCRoot2022
         }
 
         public enum SignatureAlgorithm

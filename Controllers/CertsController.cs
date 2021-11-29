@@ -71,11 +71,18 @@ namespace EmeraldSysPKIBackend.Controllers
         {
             public Org.BouncyCastle.X509.X509Certificate Certificate { get; }
             public RSA PrivateKey { get; }
+            public ECDsa PrivateKeyEC { get; }
 
             public CALoadResult(Org.BouncyCastle.X509.X509Certificate Certificate, RSA PrivateKey)
             {
                 this.Certificate = Certificate;
                 this.PrivateKey = PrivateKey;
+            }
+
+            public CALoadResult(Org.BouncyCastle.X509.X509Certificate Certificate, ECDsa PrivateKeyEC)
+            {
+                this.Certificate = Certificate;
+                this.PrivateKeyEC = PrivateKeyEC;
             }
         }
 
@@ -96,6 +103,7 @@ namespace EmeraldSysPKIBackend.Controllers
         {
             Org.BouncyCastle.X509.X509Certificate caCert = null;
             RSA caCertPrivKey = null;
+            ECDsa caCertPrivKeyEC = null;
 
             if (type == Models.CertRequest.CertificateType.CodeSigning)
             {
@@ -141,6 +149,23 @@ namespace EmeraldSysPKIBackend.Controllers
                     pem.Reader.Close();
                     fs.Close();
                 }
+            }
+            else if (type == Models.CertRequest.CertificateType.IntermediateECCRoot2022)
+            {
+                caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.crt"));
+                caCertPrivKeyEC = ECDsa.Create();
+
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.pem"))
+                {
+                    StreamReader reader = new StreamReader(fs);
+                    PemReader pem = new PemReader(reader);
+                    var obj = pem.ReadPemObject();
+                    caCertPrivKeyEC.ImportECPrivateKey(obj.Content, out _);
+                    pem.Reader.Close();
+                    fs.Close();
+                }
+
+                return new CALoadResult(caCert, caCertPrivKeyEC);
             }
             else if (type == Models.CertRequest.CertificateType.DomainSSL)
             {
