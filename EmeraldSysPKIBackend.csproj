@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="AspNetCoreRateLimit" Version="4.0.1" />
     <PackageReference Include="AspNetCoreRateLimit.Redis" Version="1.0.0" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.7.1" />
     <PackageReference Include="BCrypt.Net-Next.StrongName" Version="4.0.2" />
     <PackageReference Include="DotNetEnv" Version="2.2.0" />
     <PackageReference Include="JWT" Version="8.6.0" />

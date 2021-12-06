@@ -18,6 +18,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using Amazon;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +40,11 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using JWT;
 
+using Amazon.Runtime;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Org.BouncyCastle.Ocsp;
+
 namespace EmeraldSysPKIBackend.Controllers
 {
     [Route("v1/certs")]
@@ -46,9 +52,14 @@ namespace EmeraldSysPKIBackend.Controllers
     public class CertsController : ControllerBase
     {
         private MongoClient client;
+        private AmazonS3Client s3Client;
 
         public CertsController()
         {
+            BasicAWSCredentials creds = new BasicAWSCredentials(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"), Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY"));
+
+            s3Client = new AmazonS3Client(creds, RegionEndpoint.USWest1);
+            
             MongoClientSettings settings = MongoClientSettings.FromConnectionString(Environment.GetEnvironmentVariable("MONGODB_AUTH_STR"));
             client = new MongoClient(settings);
         }
@@ -1043,6 +1054,70 @@ namespace EmeraldSysPKIBackend.Controllers
             return Unauthorized(new { Success = false });
         }
 
+        [HttpGet("{serialNumber}/download")]
+        public async Task<IActionResult> CertDownload(string serialNumber)
+        {
+            if (Request.Headers.TryGetValue("Authorization", out Microsoft.Extensions.Primitives.StringValues v))
+            {
+                string value = v.First();
+                string[] split = value.Split(" ");
+
+                if (split[0] == "Bearer")
+                {
+                    string token = split[1];
+
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        AuthController.AuthenticateResult ret = AuthController.Authenticate(token, out AuthController.AccountToken user);
+
+                        if (ret == AuthController.AuthenticateResult.SUCCESS)
+                        {
+                            IMongoDatabase database = client.GetDatabase("main");
+                            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("certificateRequests");
+                            
+                            string serialNum = "";
+
+                            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
+                            {
+                                serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
+                            }
+                            else
+                            {
+                                serialNum = serialNumber;
+                            }
+
+                            BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", serialNum } }).FirstOrDefault();
+
+                            if (result != null)
+                            {
+                                try
+                                {
+                                    GetObjectResponse certFile = await s3Client.GetObjectAsync(new GetObjectRequest()
+                                    {
+                                        BucketName = "userstorage-pki",
+                                        Key = serialNum + ".crt"
+                                    });
+
+                                    return File(certFile.ResponseStream, certFile.Headers.ContentType, certFile.Key);
+                                }
+                                catch (AmazonS3Exception ex)
+                                {
+                                    return StatusCode(500,
+                                        new
+                                        {
+                                            Success = false, Message = "S3 Internal Error",
+                                            Info = new { StatusCode = ex.StatusCode, Message = ex.Message }
+                                        });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return Unauthorized(new { Success = false });
+        }
+
         public class RevokeRequest
         {
             [JsonProperty("revocationDate")]
@@ -1097,7 +1172,7 @@ namespace EmeraldSysPKIBackend.Controllers
                                 if (result.Contains("uid") && result["uid"].IsInt32)
                                 {
                                     int uid = result["uid"].AsInt32;
-                                    if (user.UserId == uid)
+                                    if (user.UserId == uid || user.Admin)
                                     {
                                         if (DateTime.TryParseExact(req.Date, "yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime date))
                                         {
@@ -1120,6 +1195,26 @@ namespace EmeraldSysPKIBackend.Controllers
                                     else
                                     {
                                         return StatusCode(403, new { Success = false, Message = "Missing access" });
+                                    }
+                                }
+                                else if (user.Admin)
+                                {
+                                    if (DateTime.TryParseExact(req.Date, "yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime date))
+                                    {
+                                        if (Enum.IsDefined(typeof(OCSPController.CRLReason), req.Reason))
+                                        {
+                                            UpdateDefinition<BsonDocument> upd = Builders<BsonDocument>.Update.Set("status", "revoked").Set("revokedInfo", new BsonDocument { { "revocationDate", date }, { "revocationReason", (int)req.Reason } });
+                                            collection.UpdateOne(new BsonDocument { { "serialNumber", serialNum } }, upd);
+                                            return NoContent();
+                                        }
+                                        else
+                                        {
+                                            return BadRequest(new { Success = false, Message = "Revocation reason not defined in enum" });
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return BadRequest(new { Success = false, Message = "Date cannot be parsed" });
                                     }
                                 }
                                 else
