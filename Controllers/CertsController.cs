@@ -7,13 +7,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Numerics;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
@@ -43,7 +42,6 @@ using JWT;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Org.BouncyCastle.Ocsp;
 
 namespace EmeraldSysPKIBackend.Controllers
 {
@@ -108,6 +106,7 @@ namespace EmeraldSysPKIBackend.Controllers
         // Used for returning both certificate and private key in PEM format
         public class CertResult
         {
+            public Org.BouncyCastle.Math.BigInteger SerialNumber { get; }
             public string Certificate { get; }
             public string PrivateKey { get; }
 
@@ -115,6 +114,15 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 this.Certificate = Certificate;
                 this.PrivateKey = PrivateKey;
+
+                using (StringReader reader = new StringReader(Certificate))
+                {
+                    PemReader pem = new PemReader(reader);
+                    var obj = pem.ReadPemObject();
+                    var temp = new Org.BouncyCastle.X509.X509Certificate(obj.Content);
+                    SerialNumber = temp.SerialNumber;
+                    pem.Reader.Close();
+                }
             }
         }
 
@@ -825,7 +833,7 @@ namespace EmeraldSysPKIBackend.Controllers
         }
 
         [HttpPost("generate")]
-        public IActionResult GeneratePost()
+        public async Task<IActionResult> GeneratePost()
         {
             if (Request.Headers.TryGetValue("Authorization", out Microsoft.Extensions.Primitives.StringValues v))
             {
@@ -910,6 +918,20 @@ namespace EmeraldSysPKIBackend.Controllers
 
                                         if (generated != null)
                                         {
+                                            MemoryStream mem = new MemoryStream();
+                                            StreamWriter writer = new StreamWriter(mem);
+                                            await writer.WriteAsync(generated.Certificate);
+                                            await writer.FlushAsync();
+                                            mem.Position = 0;
+                                            
+                                            await s3Client.PutObjectAsync(new PutObjectRequest()
+                                            {
+                                                BucketName = "userstorage-pki",
+                                                ContentType = "application/x-x509-ca-cert",
+                                                InputStream = mem,
+                                                Key = generated.SerialNumber.ToString() + ".crt"
+                                            });
+                                            
                                             return StatusCode(201, new { Success = true, Info = new { Certificate = generated.Certificate, PrivKey = generated.PrivateKey } });
                                         }
                                     }
