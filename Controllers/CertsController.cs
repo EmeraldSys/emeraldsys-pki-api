@@ -1010,7 +1010,7 @@ namespace EmeraldSysPKIBackend.Controllers
 
                             string serialNum = "";
 
-                            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
+                            if (Regex.IsMatch(serialNumber, @"[0-9]*[a-f][0-9a-f]*"))
                             {
                                 serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
                             }
@@ -1062,9 +1062,9 @@ namespace EmeraldSysPKIBackend.Controllers
             
             string serialNum = "";
 
-            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
+            if (Regex.IsMatch(serialNumber, @"[0-9]*[a-f][0-9a-f]*"))
             {
-                serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
+                serialNum = System.Numerics.BigInteger.Parse(serialNumber, NumberStyles.AllowHexSpecifier).ToString();
             }
             else
             {
@@ -1137,7 +1137,7 @@ namespace EmeraldSysPKIBackend.Controllers
 
                             string serialNum = "";
 
-                            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
+                            if (Regex.IsMatch(serialNumber, @"[0-9]*[a-f][0-9a-f]*"))
                             {
                                 serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
                             }
