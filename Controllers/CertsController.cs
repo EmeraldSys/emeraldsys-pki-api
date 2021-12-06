@@ -1057,65 +1057,46 @@ namespace EmeraldSysPKIBackend.Controllers
         [HttpGet("{serialNumber}/download")]
         public async Task<IActionResult> CertDownload(string serialNumber)
         {
-            if (Request.Headers.TryGetValue("Authorization", out Microsoft.Extensions.Primitives.StringValues v))
+            IMongoDatabase database = client.GetDatabase("main");
+            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("certificateRequests");
+            
+            string serialNum = "";
+
+            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
             {
-                string value = v.First();
-                string[] split = value.Split(" ");
-
-                if (split[0] == "Bearer")
-                {
-                    string token = split[1];
-
-                    if (!string.IsNullOrEmpty(token))
-                    {
-                        AuthController.AuthenticateResult ret = AuthController.Authenticate(token, out AuthController.AccountToken user);
-
-                        if (ret == AuthController.AuthenticateResult.SUCCESS)
-                        {
-                            IMongoDatabase database = client.GetDatabase("main");
-                            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("certificateRequests");
-                            
-                            string serialNum = "";
-
-                            if (Regex.IsMatch(serialNumber, @"\A\b[0-9a-fA-F]+\b\Z"))
-                            {
-                                serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
-                            }
-                            else
-                            {
-                                serialNum = serialNumber;
-                            }
-
-                            BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", serialNum } }).FirstOrDefault();
-
-                            if (result != null)
-                            {
-                                try
-                                {
-                                    GetObjectResponse certFile = await s3Client.GetObjectAsync(new GetObjectRequest()
-                                    {
-                                        BucketName = "userstorage-pki",
-                                        Key = serialNum + ".crt"
-                                    });
-
-                                    return File(certFile.ResponseStream, certFile.Headers.ContentType, certFile.Key);
-                                }
-                                catch (AmazonS3Exception ex)
-                                {
-                                    return StatusCode(500,
-                                        new
-                                        {
-                                            Success = false, Message = "S3 Internal Error",
-                                            Info = new { StatusCode = ex.StatusCode, Message = ex.Message }
-                                        });
-                                }
-                            }
-                        }
-                    }
-                }
+                serialNum = System.Numerics.BigInteger.Parse(serialNumber, System.Globalization.NumberStyles.AllowHexSpecifier).ToString();
+            }
+            else
+            {
+                serialNum = serialNumber;
             }
 
-            return Unauthorized(new { Success = false });
+            BsonDocument result = collection.Find(new BsonDocument { { "serialNumber", serialNum } }).FirstOrDefault();
+
+            if (result != null)
+            {
+                try
+                {
+                    GetObjectResponse certFile = await s3Client.GetObjectAsync(new GetObjectRequest()
+                    {
+                        BucketName = "userstorage-pki",
+                        Key = serialNum + ".crt"
+                    });
+
+                    return File(certFile.ResponseStream, certFile.Headers.ContentType, certFile.Key);
+                }
+                catch (AmazonS3Exception ex)
+                {
+                    return StatusCode(500,
+                        new
+                        {
+                            Success = false, Message = "S3 Internal Error",
+                            Info = new { StatusCode = ex.StatusCode, Message = ex.Message }
+                        });
+                }
+            }
+            
+            return NotFound(new { Success = false, Message = "No certificate was found with this serial number" });
         }
 
         public class RevokeRequest
