@@ -49,8 +49,8 @@ namespace EmeraldSysPKIBackend.Controllers
     [ApiController]
     public class CertsController : ControllerBase
     {
-        private MongoClient client;
-        private AmazonS3Client s3Client;
+        private readonly MongoClient client;
+        private readonly AmazonS3Client s3Client;
 
         public CertsController()
         {
