@@ -3,6 +3,7 @@ version: 0.2
 phases:
   pre_build:
     commands:
+      - /usr/local/bin/dotnet-install.sh
       - dotnet restore
   build:
     commands:
