@@ -234,7 +234,7 @@ _Pvt_Extensions
 .fake/
 
 # Secrets
-env
+.env
 
 # JetBrains
 .idea/
