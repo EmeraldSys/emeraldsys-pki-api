@@ -11,10 +11,10 @@ phases:
       - dotnet test --no-restore --verbosity normal
   post_build:
     commands:
-      - rm -rf bin/Debug/netcoreapp3.1/ca
-      - rm -rf bin/Debug/netcoreapp3.1/ts
+      - rm -rf bin/Debug/net6.0/ca
+      - rm -rf bin/Debug/net6.0/ts
 artifacts:
   files:
-    - bin/Debug/netcoreapp3.1/**/*
+    - bin/Debug/net6.0/**/*
     - scripts/**/*
     - appspec.yml
