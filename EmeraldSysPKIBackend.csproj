@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <Company>EmeraldSys</Company>
-    <Copyright>(C) EmeraldSys 2021. All rights reserved. For private use only.</Copyright>
+    <Copyright>(C) EmeraldSys 2022. All rights reserved. For private use only.</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
