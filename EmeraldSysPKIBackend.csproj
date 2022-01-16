@@ -18,5 +18,9 @@
     <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include=".github\workflows\aws.yml" />
+  </ItemGroup>
+
 
 </Project>
