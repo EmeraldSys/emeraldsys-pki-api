@@ -9,13 +9,15 @@
   <ItemGroup>
     <PackageReference Include="AspNetCoreRateLimit" Version="4.0.1" />
     <PackageReference Include="AspNetCoreRateLimit.Redis" Version="1.0.0" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.7.1" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.7.16" />
     <PackageReference Include="BCrypt.Net-Next.StrongName" Version="4.0.2" />
     <PackageReference Include="DotNetEnv" Version="2.2.0" />
     <PackageReference Include="JWT" Version="8.6.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.20" />
     <PackageReference Include="MongoDB.Driver" Version="2.13.2" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
+	<PackageReference Include="Quartz" Version="3.3.3" />
+	<PackageReference Include="Quartz.AspNetCore" Version="3.3.3" />
   </ItemGroup>
 
   <ItemGroup>
