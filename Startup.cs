@@ -90,7 +90,7 @@ namespace EmeraldSysPKIBackend
                 q.ScheduleJob<AutoUpd>(tr => tr
                     .WithIdentity("Auto Update CRL Trigger")
                     .StartNow()
-                    .WithDailyTimeIntervalSchedule(x => x.WithInterval(2, IntervalUnit.Week))
+                    .WithCalendarIntervalSchedule(x => x.WithIntervalInWeeks(2))
                     .WithDescription("Auto updates CRLs with Amazon S3")
                 );
             });
