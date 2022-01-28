@@ -15,8 +15,6 @@ using System.Threading.Tasks;
 using AspNetCoreRateLimit;
 using AspNetCoreRateLimit.Redis;
 
-using Quartz;
-
 namespace EmeraldSysPKIBackend
 {
     public class Startup
@@ -72,28 +70,6 @@ namespace EmeraldSysPKIBackend
             }));
 
             DotNetEnv.Env.Load();
-
-            services.AddQuartz(q =>
-            {
-                q.SchedulerId = "SchedulerMain";
-                q.SchedulerName = "Scheduler Main";
-
-                q.UseMicrosoftDependencyInjectionJobFactory();
-
-                q.UseSimpleTypeLoader();
-                q.UseInMemoryStore();
-                q.UseDefaultThreadPool(tp =>
-                {
-                    tp.MaxConcurrency = 10;
-                });
-
-                q.ScheduleJob<AutoUpd>(tr => tr
-                    .WithIdentity("Auto Update CRL Trigger")
-                    .StartNow()
-                    .WithCalendarIntervalSchedule(x => x.WithIntervalInWeeks(2))
-                    .WithDescription("Auto updates CRLs with Amazon S3")
-                );
-            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
