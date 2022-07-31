@@ -105,17 +105,31 @@ namespace EmeraldSysPKIBackend.Controllers
                     {
                         if (BCrypt.Net.BCrypt.Verify(req.Password, user["pass"].AsString))
                         {
+                            JWT.Algorithms.HMACSHA256Algorithm algo = new JWT.Algorithms.HMACSHA256Algorithm();
+                            string jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+                            int uid = user["uid"].AsInt32;
+
                             string token = JWT.Builder.JwtBuilder.Create()
-                                .WithAlgorithm(new JWT.Algorithms.HMACSHA256Algorithm())
-                                .WithSecret(Environment.GetEnvironmentVariable("JWT_SECRET"))
+                                .WithAlgorithm(algo)
+                                .WithSecret(jwtSecret)
                                 .AddClaim("exp", DateTimeOffset.UtcNow.AddHours(2).ToUnixTimeSeconds())
-                                .AddClaim("uid", user["uid"].AsInt32)
+                                .AddClaim("uid", uid)
                                 .AddClaim("user", req.User)
                                 .AddClaim("admin", (user.Contains("admin") && user["admin"].IsBoolean) ? user["admin"].AsBoolean : false)
                                 .AddClaim("entropy", new Random().Next(1, 87686112))
+                                .AddClaim("isRefresh", false)
                                 .Encode();
 
-                            return Ok(new { Success = true, Token = token });
+                            string refresh = JWT.Builder.JwtBuilder.Create()
+                                .WithAlgorithm(algo)
+                                .WithSecret(jwtSecret)
+                                .AddClaim("uid", uid)
+                                .AddClaim("user", req.User)
+                                .AddClaim("admin", (user.Contains("admin") && user["admin"].IsBoolean) ? user["admin"].AsBoolean : false)
+                                .AddClaim("isRefresh", true)
+                                .Encode();
+
+                            return Ok(new { Success = true, Token = token, RefreshToken = refresh });
                         }
                         else
                         {
@@ -140,7 +154,7 @@ namespace EmeraldSysPKIBackend.Controllers
 
         [HttpGet("verify")]
         [EnableCors("default")]
-        public IActionResult Verify([FromQuery]string token)
+        public IActionResult Verify([FromQuery] string token)
         {
             if (!string.IsNullOrEmpty(token))
             {
@@ -160,6 +174,59 @@ namespace EmeraldSysPKIBackend.Controllers
                 catch (JWT.Exceptions.TokenExpiredException)
                 {
                     return StatusCode(403, new { Success = false, Message = "Token expired" });
+                }
+                catch (JWT.Exceptions.SignatureVerificationException)
+                {
+                    return StatusCode(403, new { Success = false, Message = "Signature verification failed" });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { Success = false, Message = ex.Message });
+                }
+            }
+
+            return BadRequest(new { Success = false });
+        }
+
+        [HttpGet("refresh")]
+        [EnableCors("default")]
+        public IActionResult Refresh([FromQuery] string refresh)
+        {
+            IMongoDatabase database = client.GetDatabase("main");
+            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("users");
+
+            if (!string.IsNullOrEmpty(refresh))
+            {
+                try
+                {
+                    IJsonSerializer serializer = new JWT.Serializers.JsonNetSerializer();
+                    IDateTimeProvider provider = new UtcDateTimeProvider();
+                    IJwtValidator validator = new JwtValidator(serializer, provider);
+                    IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder();
+                    JWT.Algorithms.IJwtAlgorithm algorithm = new JWT.Algorithms.HMACSHA256Algorithm();
+                    IJwtDecoder decoder = new JwtDecoder(serializer, validator, urlEncoder, algorithm);
+
+                    string decoded = decoder.Decode(refresh, Environment.GetEnvironmentVariable("JWT_SECRET"), true);
+                    dynamic DecodedObj = JsonConvert.DeserializeObject(decoded);
+
+                    if (!DecodedObj.isRefresh) return BadRequest(new { Success = false, Message = "Received access token instead of refresh token" });
+
+                    BsonDocument user = collection.Find(new BsonDocument { { "user", DecodedObj.user } }).FirstOrDefault();
+
+                    string jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+                    int uid = user["uid"].AsInt32;
+
+                    string token = JWT.Builder.JwtBuilder.Create()
+                        .WithAlgorithm(algorithm)
+                        .WithSecret(jwtSecret)
+                        .AddClaim("exp", DateTimeOffset.UtcNow.AddHours(2).ToUnixTimeSeconds())
+                        .AddClaim("uid", uid)
+                        .AddClaim("user", user)
+                        .AddClaim("admin", (user.Contains("admin") && user["admin"].IsBoolean) ? user["admin"].AsBoolean : false)
+                        .AddClaim("entropy", new Random().Next(1, 87686112))
+                        .Encode();
+
+                    return Ok(new { Success = true, Token = token });
                 }
                 catch (JWT.Exceptions.SignatureVerificationException)
                 {
