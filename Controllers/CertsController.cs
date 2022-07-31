@@ -541,9 +541,30 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 var genCert = cert.Generate(sig);
 
+                BsonArray OUArray = new BsonArray();
+                foreach (string unit in req.Req.OrganizationUnits)
+                {
+                    OUArray.Add(unit);
+                }
+
+                BsonArray SubjectAltArray = new BsonArray();
+                foreach (string name in req.Req.SubjectAltNames)
+                {
+                    SubjectAltArray.Add(name);
+                }
+
                 collection.InsertOne(new BsonDocument
                 {
                     { "serialNumber", serialNum.ToString() },
+                    { "subject", new BsonDocument {
+                        { "commonName", req.Req.CommonName },
+                        { "subjectAltNames", SubjectAltArray },
+                        { "organization", req.Req.Organization },
+                        { "organizationUnits", OUArray },
+                        { "locality", req.Req.Type != Models.CertRequest.CertificateType.DomainSSL ? req.Req.Locality : "N/A" },
+                        { "state", req.Req.Type != Models.CertRequest.CertificateType.DomainSSL ? req.Req.State : "N/A" },
+                        { "country", req.Req.Type != Models.CertRequest.CertificateType.DomainSSL ? req.Req.Country : "N/A" }
+                    } },
                     { "type", (int)req.Req.Type },
                     { "status", "good" }
                 });
