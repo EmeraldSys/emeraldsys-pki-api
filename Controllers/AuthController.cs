@@ -208,8 +208,9 @@ namespace EmeraldSysPKIBackend.Controllers
 
                     string decoded = decoder.Decode(refresh, Environment.GetEnvironmentVariable("JWT_SECRET"), true);
                     dynamic DecodedObj = JsonConvert.DeserializeObject(decoded);
+                    bool isRefresh = (bool)DecodedObj.isRefresh;
 
-                    if (!DecodedObj.isRefresh) return BadRequest(new { Success = false, Message = "Received access token instead of refresh token" });
+                    if (!isRefresh) return BadRequest(new { Success = false, Message = "Received access token instead of refresh token" });
 
                     BsonDocument user = collection.Find(new BsonDocument { { "user", DecodedObj.user } }).FirstOrDefault();
 
