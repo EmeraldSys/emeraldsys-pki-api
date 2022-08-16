@@ -212,7 +212,8 @@ namespace EmeraldSysPKIBackend.Controllers
 
                     if (!isRefresh) return BadRequest(new { Success = false, Message = "Received access token instead of refresh token" });
 
-                    BsonDocument user = collection.Find(new BsonDocument { { "user", DecodedObj.user } }).FirstOrDefault();
+                    string rawUser = DecodedObj.user;
+                    BsonDocument user = collection.Find(new BsonDocument { { "user", rawUser } }).FirstOrDefault();
 
                     string jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
                     int uid = user["uid"].AsInt32;
