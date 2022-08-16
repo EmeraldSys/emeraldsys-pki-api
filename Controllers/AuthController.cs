@@ -223,7 +223,7 @@ namespace EmeraldSysPKIBackend.Controllers
                         .WithSecret(jwtSecret)
                         .AddClaim("exp", DateTimeOffset.UtcNow.AddHours(2).ToUnixTimeSeconds())
                         .AddClaim("uid", uid)
-                        .AddClaim("user", user)
+                        .AddClaim("user", rawUser)
                         .AddClaim("admin", (user.Contains("admin") && user["admin"].IsBoolean) ? user["admin"].AsBoolean : false)
                         .AddClaim("entropy", new Random().Next(1, 87686112))
                         .Encode();
