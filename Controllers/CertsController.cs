@@ -542,15 +542,21 @@ namespace EmeraldSysPKIBackend.Controllers
                 var genCert = cert.Generate(sig);
 
                 BsonArray OUArray = new BsonArray();
-                foreach (string unit in req.Req.OrganizationUnits)
+                if (req.Req.OrganizationUnits != null)
                 {
-                    OUArray.Add(unit);
+                    foreach (string unit in req.Req.OrganizationUnits)
+                    {
+                        OUArray.Add(unit);
+                    }
                 }
 
                 BsonArray SubjectAltArray = new BsonArray();
-                foreach (string name in req.Req.SubjectAltNames)
+                if (req.Req.SubjectAltNames != null)
                 {
-                    SubjectAltArray.Add(name);
+                    foreach (string name in req.Req.SubjectAltNames)
+                    {
+                        SubjectAltArray.Add(name);
+                    }
                 }
 
                 collection.InsertOne(new BsonDocument
