@@ -162,7 +162,8 @@ namespace EmeraldSysPKIBackend.Controllers
                     fs.Close();
                 }
             }
-            else if (type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            else if (type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                type == Models.CertRequest.CertificateType.IntermediateCSRoot2022)
             {
                 caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                 caCertPrivKey = RSA.Create();
@@ -177,7 +178,8 @@ namespace EmeraldSysPKIBackend.Controllers
                     fs.Close();
                 }
             }
-            else if (type == Models.CertRequest.CertificateType.IntermediateECCRoot2022)
+            else if (type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
             {
                 caCert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.crt"));
                 caCertPrivKeyEC = ECDsa.Create();
@@ -356,10 +358,14 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeID.IdKPTimeStamping));
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022 || req.Req.Type == Models.CertRequest.CertificateType.IntermediateECCRoot2022)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 || req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022)
             {
                 // TODO: Add custom extended key usages
                 cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPServerAuth, KeyPurposeID.IdKPClientAuth));
+            }
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSRoot2022 || req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
+            {
+                cert.AddExtension(X509Extensions.ExtendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeID.IdKPCodeSigning));
             }
             else if (req.Req.Type == Models.CertRequest.CertificateType.OrganizationSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL || req.Req.Type == Models.CertRequest.CertificateType.EVSSL2)
             {
@@ -414,12 +420,14 @@ namespace EmeraldSysPKIBackend.Controllers
                 crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trustedid_ts2022.crl");
                 crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trustedid_ts2022.crt");
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSRoot2022)
             {
                 crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trusted_id_root_2022.crl");
                 crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trusted_id_root_2022.crt");
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateECCRoot2022)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
             {
                 crlGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crl.pki.emeraldsys.xyz/trusted_id_root_ecc_2022.crl");
                 crtGeneralName = new GeneralName(GeneralName.UniformResourceIdentifier, "http://crt.pki.emeraldsys.xyz/trusted_id_root_ecc_2022.crt");
@@ -472,7 +480,10 @@ namespace EmeraldSysPKIBackend.Controllers
                 PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.23.140.1.3"));
                 cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(inf));
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
             {
                 PolicyInformation inf = new PolicyInformation(new DerObjectIdentifier("2.5.29.32.0"));
                 cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(inf));
@@ -494,7 +505,10 @@ namespace EmeraldSysPKIBackend.Controllers
                 cert.AddExtension(X509Extensions.CertificatePolicies, false, new CertificatePolicies(new[] { inf, inf2 }));
             }
 
-            if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
             {
                 cert.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(true));
             }
@@ -507,7 +521,10 @@ namespace EmeraldSysPKIBackend.Controllers
             {
                 cert.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage((int)X509KeyUsageFlags.DigitalSignature));
             }
-            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            else if (req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                req.Req.Type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
             {
                 cert.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage((int)X509KeyUsageFlags.DigitalSignature | (int)X509KeyUsageFlags.KeyCertSign | (int)X509KeyUsageFlags.CrlSign));
             }
@@ -917,9 +934,21 @@ namespace EmeraldSysPKIBackend.Controllers
                                                 caCertPrivKey = result.PrivateKey;
                                             }
                                         }
-                                        else if (req.Type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+                                        else if (req.Type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                                            req.Type == Models.CertRequest.CertificateType.IntermediateCSRoot2022)
                                         {
-                                            CALoadResult result = LoadCA(Models.CertRequest.CertificateType.IntermediateRoot2022);
+                                            CALoadResult result = LoadCA(Models.CertRequest.CertificateType.IntermediateSSLRoot2022);
+
+                                            if (result != null)
+                                            {
+                                                caCert = result.Certificate;
+                                                caCertPrivKey = result.PrivateKey;
+                                            }
+                                        }
+                                        else if (req.Type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                                            req.Type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
+                                        {
+                                            CALoadResult result = LoadCA(Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022);
 
                                             if (result != null)
                                             {
