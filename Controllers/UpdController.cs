@@ -181,9 +181,35 @@ namespace EmeraldSysPKIBackend.Controllers
                                             }
                                             break;
                                         }
-                                        case Models.CertRequest.CertificateType.IntermediateRoot2022:
+                                        case Models.CertRequest.CertificateType.IntermediateSSLRoot2022:
+                                        case Models.CertRequest.CertificateType.IntermediateCSRoot2022:
                                         {
                                             if (caCertFileName == "trusted_id_root_2022")
+                                            {
+                                                if (document.Contains("serialNumber") && document["serialNumber"].IsString)
+                                                {
+                                                    string serialNum = document["serialNumber"].AsString;
+                                                    if (document["revokedInfo"].IsBsonDocument)
+                                                    {
+                                                        BsonDocument revokedInfo = document["revokedInfo"].AsBsonDocument;
+                                                        if (revokedInfo.Contains("revocationDate") && revokedInfo.Contains("revocationReason") && revokedInfo["revocationDate"].IsBsonDateTime && revokedInfo["revocationReason"].IsInt32)
+                                                        {
+                                                            DateTime revocationDate = revokedInfo["revocationDate"].AsBsonDateTime.ToUniversalTime();
+                                                            int revocationReason = revokedInfo["revocationReason"].AsInt32;
+                                                            if (Enum.IsDefined(typeof(OCSPController.CRLReason), revocationReason))
+                                                            {
+                                                                crl.AddCrlEntry(new BigInteger(serialNum), revocationDate, revocationReason);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022:
+                                        case Models.CertRequest.CertificateType.IntermediateCSECCRoot2022:
+                                        {
+                                            if (caCertFileName == "trusted_id_root_ecc_2022")
                                             {
                                                 if (document.Contains("serialNumber") && document["serialNumber"].IsString)
                                                 {

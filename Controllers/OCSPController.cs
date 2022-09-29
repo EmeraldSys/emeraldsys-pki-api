@@ -60,6 +60,7 @@ namespace EmeraldSysPKIBackend.Controllers
 
             Org.BouncyCastle.X509.X509Certificate cert = null;
             RSA certPrivKey = null;
+            ECDsa certPrivKeyEC = null;
 
             Req[] reqList = ocspRequest.GetRequestList();
 
@@ -130,7 +131,8 @@ namespace EmeraldSysPKIBackend.Controllers
 
                                             break;
                                         }
-                                        case Models.CertRequest.CertificateType.IntermediateRoot2022:
+                                        case Models.CertRequest.CertificateType.IntermediateSSLRoot2022:
+                                        case Models.CertRequest.CertificateType.IntermediateCSRoot2022:
                                         {
                                             cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                                             certPrivKey = RSA.Create();
@@ -144,7 +146,27 @@ namespace EmeraldSysPKIBackend.Controllers
                                                 pem1.Reader.Close();
                                             }
 
-                                            CertType = Models.CertRequest.CertificateType.IntermediateRoot2022;
+                                            CertType = Models.CertRequest.CertificateType.IntermediateSSLRoot2022;
+                                            CertTypeSet = true;
+
+                                            break;
+                                        }
+                                        case Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022:
+                                        case Models.CertRequest.CertificateType.IntermediateCSECCRoot2022:
+                                        {
+                                            cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.crt"));
+                                            certPrivKeyEC = ECDsa.Create();
+
+                                            using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.pem"))
+                                            {
+                                                StreamReader reader1 = new StreamReader(fs);
+                                                PemReader pem1 = new PemReader(reader1);
+                                                var obj = pem1.ReadPemObject();
+                                                certPrivKeyEC.ImportECPrivateKey(obj.Content, out _);
+                                                pem1.Reader.Close();
+                                            }
+
+                                            CertType = Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022;
                                             CertTypeSet = true;
 
                                             break;
@@ -244,7 +266,7 @@ namespace EmeraldSysPKIBackend.Controllers
                                 break;
                             }
 
-                            if (cert != null && certPrivKey != null)
+                            if (cert != null)
                             {
                                 BasicOcspRespGenerator respGen = new BasicOcspRespGenerator(cert.GetPublicKey());
                                 DateTime thisUpdate = DateTime.UtcNow;
@@ -306,7 +328,15 @@ namespace EmeraldSysPKIBackend.Controllers
                                 if (i == (reqList.Length - 1))
                                 {
                                     SecureRandom rand = new SecureRandom(new CryptoApiRandomGenerator());
-                                    Asn1SignatureFactory sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKey).Private, rand);
+                                    Asn1SignatureFactory sig = null;
+                                    if (certPrivKey != null)
+                                    {
+                                        sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKey).Private, rand);
+                                    }
+                                    else if (certPrivKeyEC != null)
+                                    {
+                                        sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKeyEC).Private, rand);
+                                    }
                                     res = respGen.Generate(sig, new Org.BouncyCastle.X509.X509Certificate[] { }, thisUpdate);
                                     Successful = true;
                                 }
@@ -363,6 +393,7 @@ namespace EmeraldSysPKIBackend.Controllers
 
             Org.BouncyCastle.X509.X509Certificate cert = null;
             RSA certPrivKey = null;
+            ECDsa certPrivKeyEC = null;
 
             if (type == Models.CertRequest.CertificateType.CodeSigning)
             {
@@ -406,7 +437,8 @@ namespace EmeraldSysPKIBackend.Controllers
                     pem1.Reader.Close();
                 }
             }
-            else if (type == Models.CertRequest.CertificateType.IntermediateRoot2022)
+            else if (type == Models.CertRequest.CertificateType.IntermediateSSLRoot2022 ||
+                type == Models.CertRequest.CertificateType.IntermediateCSRoot2022)
             {
                 cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_2022.crt"));
                 certPrivKey = RSA.Create();
@@ -417,6 +449,21 @@ namespace EmeraldSysPKIBackend.Controllers
                     PemReader pem1 = new PemReader(reader1);
                     var obj = pem1.ReadPemObject();
                     certPrivKey.ImportRSAPrivateKey(obj.Content, out _);
+                    pem1.Reader.Close();
+                }
+            }
+            else if (type == Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022 ||
+                type == Models.CertRequest.CertificateType.IntermediateCSECCRoot2022)
+            {
+                cert = DotNetUtilities.FromX509Certificate(new X509Certificate2(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.crt"));
+                certPrivKeyEC = ECDsa.Create();
+
+                using (FileStream fs = System.IO.File.OpenRead(Program.CURRENT_DIR + @"/ca/trusted_id_root_ecc_2022.pem"))
+                {
+                    StreamReader reader1 = new StreamReader(fs);
+                    PemReader pem1 = new PemReader(reader1);
+                    var obj = pem1.ReadPemObject();
+                    certPrivKeyEC.ImportECPrivateKey(obj.Content, out _);
                     pem1.Reader.Close();
                 }
             }
@@ -510,7 +557,15 @@ namespace EmeraldSysPKIBackend.Controllers
             }
 
             SecureRandom rand = new SecureRandom(new CryptoApiRandomGenerator());
-            Asn1SignatureFactory sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKey).Private, rand);
+            Asn1SignatureFactory sig = null;
+            if (certPrivKey != null)
+            {
+                sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKey).Private, rand);
+            }
+            else if (certPrivKeyEC != null)
+            {
+                sig = new Asn1SignatureFactory("SHA256withRSA", DotNetUtilities.GetKeyPair(certPrivKeyEC).Private, rand);
+            }
             //BasicOcspResp resp = respGen.Generate(sig, new[] { cert }, DateTime.UtcNow);
             BasicOcspResp resp = respGen.Generate(sig, new Org.BouncyCastle.X509.X509Certificate[] { }, thisUpdate);
 
@@ -705,7 +760,32 @@ namespace EmeraldSysPKIBackend.Controllers
 
             OcspReq req = new OcspReq(bRequest);
 
-            byte[] bResponse = GenerateOCSPResponse(req, Models.CertRequest.CertificateType.IntermediateRoot2022);
+            byte[] bResponse = GenerateOCSPResponse(req, Models.CertRequest.CertificateType.IntermediateSSLRoot2022);
+
+            return new FileContentResult(bResponse, "application/ocsp-response");
+        }
+
+        [HttpPost("trusted_id_root_ecc_2022")]
+        public IActionResult RootECCOCSPPost()
+        {
+            if (Request.Host.ToString() != "ocsp.pki.emeraldsys.xyz") return NotFound();
+
+            if (Request.ContentType != "application/ocsp-request")
+            {
+                OCSPRespGenerator errRespGen = new OCSPRespGenerator();
+                return new FileContentResult(errRespGen.Generate(OcspRespStatus.MalformedRequest, null).GetEncoded(), "application/ocsp-response");
+            }
+
+            Request.EnableBuffering();
+            Stream str = Request.Body;
+            str.Position = 0;
+            BinaryReader reader = new BinaryReader(str);
+            byte[] bRequest = reader.ReadBytes((int)Request.ContentLength);
+            reader.Close();
+
+            OcspReq req = new OcspReq(bRequest);
+
+            byte[] bResponse = GenerateOCSPResponse(req, Models.CertRequest.CertificateType.IntermediateSSLECCRoot2022);
 
             return new FileContentResult(bResponse, "application/ocsp-response");
         }
