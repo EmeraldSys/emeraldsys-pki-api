@@ -15,8 +15,6 @@ using System.Threading.Tasks;
 using AspNetCoreRateLimit;
 using AspNetCoreRateLimit.Redis;
 
-using Amazon.AspNetCore.Identity.Cognito;
-
 namespace EmeraldSysPKIBackend
 {
     public class Startup
@@ -70,8 +68,6 @@ namespace EmeraldSysPKIBackend
             {
                 builder.AllowAnyMethod().AllowAnyHeader().AllowCredentials().SetIsOriginAllowed(host => true);
             }));
-
-            services.AddCognitoIdentity();
 
             DotNetEnv.Env.Load();
         }
